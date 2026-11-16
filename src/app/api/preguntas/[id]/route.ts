@@ -2,8 +2,6 @@
 import { manejar } from "@/lib/http";
 import { crearServicioPreguntas } from "@/services/preguntas.service";
 
-export const runtime = "nodejs";
-
 export const GET = manejar(
   async (_request: Request, context: { params: Promise<{ id: string }> }) => {
     const { id } = await context.params;

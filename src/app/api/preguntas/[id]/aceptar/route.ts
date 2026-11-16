@@ -3,8 +3,6 @@ import { manejar, requerirUsuario } from "@/lib/http";
 import { aceptarRespuestaSchema } from "@/schemas/pregunta.schema";
 import { crearServicioPreguntas } from "@/services/preguntas.service";
 
-export const runtime = "nodejs";
-
 export const POST = manejar(
   async (request: Request, context: { params: Promise<{ id: string }> }) => {
     const usuario = await requerirUsuario(request);
