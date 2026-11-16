@@ -6,8 +6,6 @@ import {
 } from "@/schemas/pregunta.schema";
 import { crearServicioPreguntas } from "@/services/preguntas.service";
 
-export const runtime = "nodejs";
-
 export const GET = manejar(async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const filtros = filtroPreguntasSchema.parse({
@@ -30,3 +28,4 @@ export const POST = manejar(async (request: Request) => {
   const pregunta = await servicio.crearPregunta(usuario, input);
   return NextResponse.json({ pregunta }, { status: 201 });
 });
+

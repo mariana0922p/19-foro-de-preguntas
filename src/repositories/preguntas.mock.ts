@@ -233,3 +233,13 @@ export function aceptarRespuestaEnAlmacen(
   pregunta.aceptadaId = respuestaId;
   return { ok: true, aceptadaId: respuestaId };
 }
+
+export function moderarPreguntaEnAlmacen(
+  preguntaId: string,
+  oculta: boolean
+): boolean {
+  const pregunta = almacenPreguntas.find((p) => p.id === preguntaId);
+  if (!pregunta) return false;
+  pregunta.oculta = oculta;
+  return true;
+}
