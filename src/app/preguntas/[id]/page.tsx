@@ -1,6 +1,4 @@
-﻿export const dynamic = "force-dynamic";
-
-import { Suspense } from "react";
+﻿import { Suspense } from "react";
 import DetallePreguntaClient from "./DetallePreguntaClient";
 
 export default async function DetallePreguntaPage({
