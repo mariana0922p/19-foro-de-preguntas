@@ -1,6 +1,16 @@
 ﻿import { Suspense } from "react";
 import DetallePreguntaClient from "./DetallePreguntaClient";
 
+export async function generateStaticParams() {
+  return [
+    { id: "1" },
+    { id: "2" },
+    { id: "3" }
+  ];
+}
+
+export const dynamicParams = true;
+
 export default async function DetallePreguntaPage({
   params,
 }: {
