@@ -1,6 +1,10 @@
 ﻿import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { ErrorApi } from "@/lib/errores";
+import {
+  obtenerAuthAdmin,
+  tieneCredencialesFirebaseAdmin,
+} from "@/lib/firebase-admin";
 import { USUARIO_DEMO_ACTUAL } from "@/repositories/preguntas.mock";
 
 export interface UsuarioSesion {
@@ -9,7 +13,24 @@ export interface UsuarioSesion {
   rol: "estudiante" | "admin";
 }
 
-export function obtenerUsuarioOpcional(request: Request): UsuarioSesion | null {
+export async function obtenerUsuarioOpcional(
+  request: Request
+): Promise<UsuarioSesion | null> {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ") && tieneCredencialesFirebaseAdmin()) {
+    const token = authHeader.slice("Bearer ".length).trim();
+    try {
+      const decoded = await obtenerAuthAdmin().verifyIdToken(token);
+      return {
+        uid: decoded.uid,
+        nombre: String(decoded.name || decoded.email || decoded.uid),
+        rol: decoded.rol === "admin" ? "admin" : "estudiante",
+      };
+    } catch {
+      throw new ErrorApi(401, "Token de autenticación inválido o expirado");
+    }
+  }
+
   const demoUid = request.headers.get("x-demo-uid");
   if (demoUid === "anonimo") return null;
 
@@ -29,8 +50,10 @@ export function obtenerUsuarioOpcional(request: Request): UsuarioSesion | null {
   };
 }
 
-export function requerirUsuario(request: Request): UsuarioSesion {
-  const usuario = obtenerUsuarioOpcional(request);
+export async function requerirUsuario(
+  request: Request
+): Promise<UsuarioSesion> {
+  const usuario = await obtenerUsuarioOpcional(request);
   if (!usuario) {
     throw new ErrorApi(401, "Debes iniciar sesión para realizar esta acción");
   }

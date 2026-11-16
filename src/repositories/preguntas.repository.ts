@@ -8,6 +8,7 @@ import {
   agregarRespuestaEnAlmacen,
   crearPreguntaEnAlmacen,
   listarPreguntas,
+  moderarPreguntaEnAlmacen,
   obtenerPreguntaPorId,
   type PreguntaItem,
   type RespuestaItem,
@@ -45,6 +46,7 @@ export interface PreguntasRepository {
     | { ok: true; aceptadaId: string }
     | { ok: false; status: 403 | 404; error: string }
   >;
+  moderar(preguntaId: string, oculta: boolean): Promise<boolean>;
 }
 
 const repositorioMemoria: PreguntasRepository = {
@@ -65,6 +67,9 @@ const repositorioMemoria: PreguntasRepository = {
   },
   async aceptarRespuesta(preguntaId, usuarioUid, respuestaId) {
     return aceptarRespuestaEnAlmacen(preguntaId, usuarioUid, respuestaId);
+  },
+  async moderar(preguntaId, oculta) {
+    return moderarPreguntaEnAlmacen(preguntaId, oculta);
   },
 };
 
@@ -264,6 +269,15 @@ const repositorioFirestore: PreguntasRepository = {
 
     await pregRef.update({ aceptadaId: respuestaId });
     return { ok: true, aceptadaId: respuestaId };
+  },
+
+  async moderar(preguntaId, oculta) {
+    const db = obtenerFirestoreAdmin();
+    const pregRef = db.collection("preguntas").doc(preguntaId);
+    const pregDoc = await pregRef.get();
+    if (!pregDoc.exists) return false;
+    await pregRef.update({ oculta });
+    return true;
   },
 };
 

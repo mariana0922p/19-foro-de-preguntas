@@ -103,5 +103,23 @@ export function crearServicioPreguntas(
       }
       return { aceptadaId: resultado.aceptadaId };
     },
+
+    async moderarPregunta(
+      usuario: UsuarioSesion,
+      preguntaId: string,
+      oculta: boolean
+    ) {
+      if (usuario.rol !== "admin") {
+        throw new ErrorApi(
+          403,
+          "Solo los moderadores pueden ocultar o restaurar preguntas"
+        );
+      }
+      const actualizada = await repo.moderar(preguntaId, oculta);
+      if (!actualizada) {
+        throw new ErrorApi(404, "Pregunta no encontrada");
+      }
+      return { id: preguntaId, oculta };
+    },
   };
 }

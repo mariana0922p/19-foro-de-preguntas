@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export const POST = manejar(
   async (request: Request, context: { params: Promise<{ id: string }> }) => {
-    const usuario = requerirUsuario(request);
+    const usuario = await requerirUsuario(request);
     const { id } = await context.params;
     const body = await request.json().catch(() => null);
     const input = crearRespuestaSchema.parse(body);

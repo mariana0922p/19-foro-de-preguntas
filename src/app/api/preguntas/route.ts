@@ -22,7 +22,7 @@ export const GET = manejar(async (request: Request) => {
 });
 
 export const POST = manejar(async (request: Request) => {
-  const usuario = requerirUsuario(request);
+  const usuario = await requerirUsuario(request);
   const body = await request.json().catch(() => null);
   const input = crearPreguntaSchema.parse(body);
 

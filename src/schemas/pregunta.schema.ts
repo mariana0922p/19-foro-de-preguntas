@@ -41,6 +41,12 @@ export const aceptarRespuestaSchema = z
   })
   .strict();
 
+export const moderarPreguntaSchema = z
+  .object({
+    oculta: z.boolean(),
+  })
+  .strict();
+
 export const filtroPreguntasSchema = z.object({
   q: z.string().trim().max(100).optional(),
   etiqueta: z.string().trim().max(30).optional(),
@@ -51,4 +57,5 @@ export type CrearPreguntaInput = z.infer<typeof crearPreguntaSchema>;
 export type CrearRespuestaInput = z.infer<typeof crearRespuestaSchema>;
 export type VotarInput = z.infer<typeof votarSchema>;
 export type AceptarRespuestaInput = z.infer<typeof aceptarRespuestaSchema>;
+export type ModerarPreguntaInput = z.infer<typeof moderarPreguntaSchema>;
 export type FiltroPreguntasInput = z.infer<typeof filtroPreguntasSchema>;
