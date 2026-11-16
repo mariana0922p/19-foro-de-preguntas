@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { VoteControls } from "@/components/VoteControls";
 import { crearRespuestaSchema } from "@/schemas/pregunta.schema";
@@ -9,7 +10,10 @@ import {
   type PreguntaItem,
 } from "@/repositories/preguntas.mock";
 
-export default function DetallePreguntaClient({ id }: { id: string }) {
+export default function DetallePreguntaClient() {
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : (params.id ?? "");
+
   const [pregunta, setPregunta] = useState<PreguntaItem | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +25,7 @@ export default function DetallePreguntaClient({ id }: { id: string }) {
   const [mensajeAccion, setMensajeAccion] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!id) return;
     const controller = new AbortController();
 
     fetch(`/api/preguntas/${encodeURIComponent(id)}`, {
@@ -55,6 +60,7 @@ export default function DetallePreguntaClient({ id }: { id: string }) {
 
   async function manejarEnviarRespuesta(e: React.FormEvent) {
     e.preventDefault();
+    if (!id) return;
     setErrorRespuesta(null);
     setMensajeAccion(null);
 
@@ -92,6 +98,7 @@ export default function DetallePreguntaClient({ id }: { id: string }) {
   }
 
   async function manejarAceptarRespuesta(respuestaId: string) {
+    if (!id) return;
     setMensajeAccion(null);
     try {
       const res = await fetch(

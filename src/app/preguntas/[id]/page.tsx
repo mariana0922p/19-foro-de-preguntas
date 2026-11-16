@@ -1,22 +1,7 @@
 ﻿import { Suspense } from "react";
 import DetallePreguntaClient from "./DetallePreguntaClient";
 
-export async function generateStaticParams() {
-  return [
-    { id: "1" },
-    { id: "2" },
-    { id: "3" }
-  ];
-}
-
-export const dynamicParams = true;
-
-export default async function DetallePreguntaPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolvedParams = await params;
+export default function DetallePreguntaPage() {
   return (
     <Suspense
       fallback={
@@ -26,7 +11,7 @@ export default async function DetallePreguntaPage({
         </div>
       }
     >
-      <DetallePreguntaClient id={resolvedParams.id} />
+      <DetallePreguntaClient />
     </Suspense>
   );
 }
