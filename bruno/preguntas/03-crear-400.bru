@@ -1,0 +1,19 @@
+﻿meta {
+  name: 03 - Crear pregunta invalida (400)
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:3000/api/preguntas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "titulo": "Corto",
+    "cuerpo": "Muy corto",
+    "etiquetas": []
+  }
+}

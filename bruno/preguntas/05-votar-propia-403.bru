@@ -1,0 +1,21 @@
+﻿meta {
+  name: 05 - Votar propia pregunta prohibido (403)
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:3000/api/preguntas/preg-3/votos
+  body: json
+  auth: none
+}
+
+headers {
+  x-demo-uid: usr-estudiante
+}
+
+body:json {
+  {
+    "valor": 1
+  }
+}

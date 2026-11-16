@@ -1,51 +1,23 @@
 ﻿import { NextResponse } from "next/server";
+import { manejar, requerirUsuario } from "@/lib/http";
 import { aceptarRespuestaSchema } from "@/schemas/pregunta.schema";
-import {
-  aceptarRespuestaEnAlmacen,
-  USUARIO_DEMO_ACTUAL,
-} from "@/repositories/preguntas.mock";
+import { crearServicioPreguntas } from "@/services/preguntas.service";
 
 export const runtime = "nodejs";
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
-  const { id } = await context.params;
-  const body = await request.json().catch(() => null);
-  const parsed = aceptarRespuestaSchema.safeParse(body);
+export const POST = manejar(
+  async (request: Request, context: { params: Promise<{ id: string }> }) => {
+    const usuario = requerirUsuario(request);
+    const { id } = await context.params;
+    const body = await request.json().catch(() => null);
+    const input = aceptarRespuestaSchema.parse(body);
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: "Solicitud inválida",
-        detalles: parsed.error.issues.map((i) => ({
-          campo: i.path.join("."),
-          mensaje: i.message,
-        })),
-      },
-      { status: 400 }
+    const servicio = crearServicioPreguntas();
+    const resultado = await servicio.aceptarRespuesta(
+      usuario,
+      id,
+      input.respuestaId
     );
+    return NextResponse.json(resultado, { status: 200 });
   }
-
-  const usuarioUid =
-    request.headers.get("x-demo-uid") || USUARIO_DEMO_ACTUAL.uid;
-
-  const resultado = aceptarRespuestaEnAlmacen(
-    id,
-    usuarioUid,
-    parsed.data.respuestaId
-  );
-
-  if (!resultado.ok) {
-    return NextResponse.json(
-      { error: resultado.error },
-      { status: resultado.status }
-    );
-  }
-
-  return NextResponse.json(
-    { aceptadaId: resultado.aceptadaId },
-    { status: 200 }
-  );
-}
+);

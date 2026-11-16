@@ -1,84 +1,32 @@
 ﻿import { NextResponse } from "next/server";
+import { manejar, requerirUsuario } from "@/lib/http";
 import {
   crearPreguntaSchema,
   filtroPreguntasSchema,
 } from "@/schemas/pregunta.schema";
-import {
-  crearPreguntaEnAlmacen,
-  listarPreguntas,
-  USUARIO_DEMO_ACTUAL,
-} from "@/repositories/preguntas.mock";
+import { crearServicioPreguntas } from "@/services/preguntas.service";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+export const GET = manejar(async (request: Request) => {
   const { searchParams } = new URL(request.url);
-  const parsed = filtroPreguntasSchema.safeParse({
+  const filtros = filtroPreguntasSchema.parse({
     q: searchParams.get("q") ?? undefined,
     etiqueta: searchParams.get("etiqueta") ?? undefined,
     orden: searchParams.get("orden") ?? "recientes",
   });
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: "Parámetros de consulta inválidos",
-        detalles: parsed.error.issues.map((i) => ({
-          campo: i.path.join("."),
-          mensaje: i.message,
-        })),
-      },
-      { status: 400 }
-    );
-  }
+  const servicio = crearServicioPreguntas();
+  const resultado = await servicio.listar(filtros);
+  return NextResponse.json(resultado, { status: 200 });
+});
 
-  const { q, etiqueta, orden } = parsed.data;
-  let items = listarPreguntas();
-
-  if (q) {
-    const termino = q.toLowerCase();
-    items = items.filter(
-      (p) =>
-        p.titulo.toLowerCase().includes(termino) ||
-        p.cuerpo.toLowerCase().includes(termino)
-    );
-  }
-
-  if (etiqueta) {
-    const tag = etiqueta.toLowerCase();
-    items = items.filter((p) => p.etiquetas.some((e) => e.toLowerCase() === tag));
-  }
-
-  items = [...items].sort((a, b) => {
-    if (orden === "populares") return b.votos - a.votos;
-    return new Date(b.creadaEn).getTime() - new Date(a.creadaEn).getTime();
-  });
-
-  return NextResponse.json({ items, siguienteCursor: null }, { status: 200 });
-}
-
-export async function POST(request: Request) {
+export const POST = manejar(async (request: Request) => {
+  const usuario = requerirUsuario(request);
   const body = await request.json().catch(() => null);
-  const parsed = crearPreguntaSchema.safeParse(body);
+  const input = crearPreguntaSchema.parse(body);
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: "Datos de pregunta inválidos",
-        detalles: parsed.error.issues.map((i) => ({
-          campo: i.path.join("."),
-          mensaje: i.message,
-        })),
-      },
-      { status: 400 }
-    );
-  }
-
-  const nueva = crearPreguntaEnAlmacen({
-    autorUid: USUARIO_DEMO_ACTUAL.uid,
-    autorNombre: USUARIO_DEMO_ACTUAL.nombre,
-    ...parsed.data,
-  });
-
-  return NextResponse.json({ pregunta: nueva }, { status: 201 });
-}
+  const servicio = crearServicioPreguntas();
+  const pregunta = await servicio.crearPregunta(usuario, input);
+  return NextResponse.json({ pregunta }, { status: 201 });
+});

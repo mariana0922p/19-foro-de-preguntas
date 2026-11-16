@@ -1,0 +1,203 @@
+﻿openapi: 3.0.3
+info:
+  title: API Foro de Preguntas y Respuestas (Proyecto 19)
+  version: 1.0.0
+  description: API REST por capas (Next.js App Router + Zod + Firebase Admin SDK) para gestionar preguntas, respuestas, votos y aceptación.
+servers:
+  - url: http://localhost:3000
+    description: Servidor local de desarrollo
+paths:
+  /api/preguntas:
+    get:
+      summary: Listar preguntas publicadas
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+            maxLength: 100
+        - in: query
+          name: etiqueta
+          schema:
+            type: string
+            maxLength: 30
+        - in: query
+          name: orden
+          schema:
+            type: string
+            enum: [recientes, populares]
+            default: recientes
+      responses:
+        "200":
+          description: Lista de preguntas
+        "400":
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      summary: Crear una nueva pregunta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrearPreguntaInput"
+      responses:
+        "201":
+          description: Pregunta creada exitosamente
+        "400":
+          description: Error de validación Zod
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Sesión no iniciada
+  /api/preguntas/{id}:
+    get:
+      summary: Obtener detalle de una pregunta y sus respuestas
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalle de la pregunta
+        "404":
+          description: Pregunta no encontrada
+  /api/preguntas/{id}/respuestas:
+    post:
+      summary: Publicar una respuesta en una pregunta
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrearRespuestaInput"
+      responses:
+        "201":
+          description: Respuesta publicada
+        "400":
+          description: Validación fallida
+        "401":
+          description: No autenticado
+        "404":
+          description: Pregunta no encontrada
+  /api/preguntas/{id}/votos:
+    post:
+      summary: Votar a favor (1) o en contra (-1) una pregunta
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VotarInput"
+      responses:
+        "200":
+          description: Voto aplicado o revertido
+        "400":
+          description: Valor de voto inválido
+        "401":
+          description: No autenticado
+        "403":
+          description: No se permite votar la propia publicación
+        "404":
+          description: Pregunta no encontrada
+  /api/preguntas/{id}/aceptar:
+    post:
+      summary: Marcar una respuesta como aceptada (solo autor)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AceptarRespuestaInput"
+      responses:
+        "200":
+          description: Respuesta marcada como aceptada
+        "400":
+          description: Solicitud inválida
+        "401":
+          description: No autenticado
+        "403":
+          description: Solo el autor de la pregunta puede aceptar respuestas
+        "404":
+          description: Pregunta o respuesta no encontrada
+components:
+  schemas:
+    CrearPreguntaInput:
+      type: object
+      required: [titulo, cuerpo, etiquetas]
+      properties:
+        titulo:
+          type: string
+          minLength: 10
+          maxLength: 150
+        cuerpo:
+          type: string
+          minLength: 20
+          maxLength: 5000
+        etiquetas:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: string
+    CrearRespuestaInput:
+      type: object
+      required: [cuerpo]
+      properties:
+        cuerpo:
+          type: string
+          minLength: 20
+          maxLength: 5000
+    VotarInput:
+      type: object
+      required: [valor]
+      properties:
+        valor:
+          type: integer
+          enum: [1, -1]
+    AceptarRespuestaInput:
+      type: object
+      required: [respuestaId]
+      properties:
+        respuestaId:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        detalles:
+          type: array
+          items:
+            type: object
+            properties:
+              campo:
+                type: string
+              mensaje:
+                type: string
