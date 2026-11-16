@@ -1,36 +1,27 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# 19 · Foro de preguntas y respuestas
 
-## Getting Started
+Aplicación web desarrollada con Next.js 16 (App Router), React, TypeScript y Zod para que estudiantes publiquen preguntas, compartan respuestas, voten y consulten soluciones aceptadas[cite: 1].
 
-First, run the development server:
+## Requisitos y ejecución local
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Instalar dependencias: `npm install`[cite: 1]
+2. Iniciar servidor local: `npm run dev`[cite: 1]
+3. Abrir en el navegador:
+   - Listado principal: `http://localhost:3000`[cite: 4]
+   - Detalle de pregunta: `http://localhost:3000/preguntas/preg-1`
+   - API REST: `http://localhost:3000/api/preguntas`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts disponibles
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `npm run dev`: inicia el servidor de desarrollo[cite: 8].
+- `npm run build`: compila la aplicación para producción[cite: 8].
+- `npm run lint`: ejecuta ESLint y reglas de accesibilidad[cite: 1, 8].
+- `npx tsc --noEmit`: verifica los tipos de TypeScript.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Estructura principal
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/`: páginas (`page.tsx`, `preguntas/[id]/page.tsx`) y Route Handlers (`api/preguntas/`)[cite: 1].
+- `src/components/`: componentes reutilizables (`QuestionCard.tsx`)[cite: 1].
+- `src/repositories/`: datos de ejemplo (`preguntas.mock.ts`).
+- `src/schemas/`: esquemas de validación Zod (`pregunta.schema.ts`)[cite: 1].
+- `ia/`: bitácora (`BITACORA.md`) y evidencias de seguridad (`PRUEBAS-SEGURIDAD.md`)[cite: 1].
