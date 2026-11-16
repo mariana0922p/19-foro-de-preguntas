@@ -1,5 +1,5 @@
 ﻿import { NextResponse } from "next/server";
-import { PREGUNTAS_MOCK } from "@/repositories/preguntas.mock";
+import { obtenerPreguntaPorId } from "@/repositories/preguntas.mock";
 
 export const runtime = "nodejs";
 
@@ -8,7 +8,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  const pregunta = PREGUNTAS_MOCK.find((p) => p.id === id && !p.oculta);
+  const pregunta = obtenerPreguntaPorId(id);
 
   if (!pregunta) {
     return NextResponse.json(

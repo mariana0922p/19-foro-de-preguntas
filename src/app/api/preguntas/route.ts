@@ -1,6 +1,13 @@
 ﻿import { NextResponse } from "next/server";
-import { filtroPreguntasSchema } from "@/schemas/pregunta.schema";
-import { PREGUNTAS_MOCK } from "@/repositories/preguntas.mock";
+import {
+  crearPreguntaSchema,
+  filtroPreguntasSchema,
+} from "@/schemas/pregunta.schema";
+import {
+  crearPreguntaEnAlmacen,
+  listarPreguntas,
+  USUARIO_DEMO_ACTUAL,
+} from "@/repositories/preguntas.mock";
 
 export const runtime = "nodejs";
 
@@ -26,8 +33,7 @@ export async function GET(request: Request) {
   }
 
   const { q, etiqueta, orden } = parsed.data;
-
-  let items = PREGUNTAS_MOCK.filter((p) => !p.oculta);
+  let items = listarPreguntas();
 
   if (q) {
     const termino = q.toLowerCase();
@@ -49,4 +55,30 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({ items, siguienteCursor: null }, { status: 200 });
+}
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => null);
+  const parsed = crearPreguntaSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: "Datos de pregunta inválidos",
+        detalles: parsed.error.issues.map((i) => ({
+          campo: i.path.join("."),
+          mensaje: i.message,
+        })),
+      },
+      { status: 400 }
+    );
+  }
+
+  const nueva = crearPreguntaEnAlmacen({
+    autorUid: USUARIO_DEMO_ACTUAL.uid,
+    autorNombre: USUARIO_DEMO_ACTUAL.nombre,
+    ...parsed.data,
+  });
+
+  return NextResponse.json({ pregunta: nueva }, { status: 201 });
 }

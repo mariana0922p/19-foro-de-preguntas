@@ -1,4 +1,6 @@
-﻿export interface RespuestaItem {
+﻿import { calcularNuevoEstadoVoto } from "@/services/foro.service";
+
+export interface RespuestaItem {
   id: string;
   autorUid: string;
   autorNombre: string;
@@ -22,7 +24,12 @@ export interface PreguntaItem {
   listaRespuestas: RespuestaItem[];
 }
 
-export const PREGUNTAS_MOCK: PreguntaItem[] = [
+export const USUARIO_DEMO_ACTUAL = {
+  uid: "usr-estudiante",
+  nombre: "Mariana Estudiante",
+};
+
+const DATOS_INICIALES: PreguntaItem[] = [
   {
     id: "preg-1",
     autorUid: "usr-ana",
@@ -84,8 +91,8 @@ export const PREGUNTAS_MOCK: PreguntaItem[] = [
   },
   {
     id: "preg-3",
-    autorUid: "usr-mateo",
-    autorNombre: "Mateo Valencia",
+    autorUid: "usr-estudiante",
+    autorNombre: "Mariana Estudiante",
     titulo: "¿Cómo validar esquemas anidados y arreglos con Zod en una API REST?",
     cuerpo:
       "Necesito validar en el servidor que un arreglo de etiquetas tenga mínimo 1 elemento, máximo 5, y que no vengan campos extra no declarados en el JSON de entrada.",
@@ -98,3 +105,131 @@ export const PREGUNTAS_MOCK: PreguntaItem[] = [
     listaRespuestas: [],
   },
 ];
+
+let almacenPreguntas: PreguntaItem[] = structuredClone(DATOS_INICIALES);
+const votosPorPreguntaYUsuario = new Map<string, 1 | -1>();
+
+export function reiniciarAlmacenMock() {
+  almacenPreguntas = structuredClone(DATOS_INICIALES);
+  votosPorPreguntaYUsuario.clear();
+}
+
+export function listarPreguntas(): PreguntaItem[] {
+  return almacenPreguntas.filter((p) => !p.oculta);
+}
+
+export function obtenerPreguntaPorId(id: string): PreguntaItem | undefined {
+  return almacenPreguntas.find((p) => p.id === id && !p.oculta);
+}
+
+export function crearPreguntaEnAlmacen(datos: {
+  autorUid: string;
+  autorNombre: string;
+  titulo: string;
+  cuerpo: string;
+  etiquetas: string[];
+}): PreguntaItem {
+  const nueva: PreguntaItem = {
+    id: `preg-${Date.now()}`,
+    autorUid: datos.autorUid,
+    autorNombre: datos.autorNombre,
+    titulo: datos.titulo,
+    cuerpo: datos.cuerpo,
+    etiquetas: datos.etiquetas.map((e) => e.toLowerCase()),
+    votos: 0,
+    respuestas: 0,
+    aceptadaId: null,
+    oculta: false,
+    creadaEn: new Date().toISOString(),
+    listaRespuestas: [],
+  };
+  almacenPreguntas.unshift(nueva);
+  return nueva;
+}
+
+export function agregarRespuestaEnAlmacen(
+  preguntaId: string,
+  datos: { autorUid: string; autorNombre: string; cuerpo: string }
+): RespuestaItem | null {
+  const pregunta = obtenerPreguntaPorId(preguntaId);
+  if (!pregunta) return null;
+
+  const nuevaRespuesta: RespuestaItem = {
+    id: `resp-${Date.now()}`,
+    autorUid: datos.autorUid,
+    autorNombre: datos.autorNombre,
+    cuerpo: datos.cuerpo,
+    votos: 0,
+    creadaEn: new Date().toISOString(),
+  };
+
+  pregunta.listaRespuestas.push(nuevaRespuesta);
+  pregunta.respuestas = pregunta.listaRespuestas.length;
+  return nuevaRespuesta;
+}
+
+export function votarPreguntaEnAlmacen(
+  preguntaId: string,
+  usuarioUid: string,
+  valor: 1 | -1
+):
+  | { ok: true; votos: number; votoUsuario: 1 | -1 | null }
+  | { ok: false; status: 403 | 404; error: string } {
+  const pregunta = obtenerPreguntaPorId(preguntaId);
+  if (!pregunta) {
+    return { ok: false, status: 404, error: "Pregunta no encontrada" };
+  }
+  if (pregunta.autorUid === usuarioUid) {
+    return {
+      ok: false,
+      status: 403,
+      error: "No puedes votar tu propia publicación",
+    };
+  }
+
+  const clave = `${preguntaId}:${usuarioUid}`;
+  const votoPrevio = votosPorPreguntaYUsuario.get(clave) ?? null;
+  const resultado = calcularNuevoEstadoVoto({
+    votosActuales: pregunta.votos,
+    votoPrevioUsuario: votoPrevio,
+    nuevoValor: valor,
+  });
+
+  pregunta.votos = resultado.votos;
+  if (resultado.votoUsuario === null) {
+    votosPorPreguntaYUsuario.delete(clave);
+  } else {
+    votosPorPreguntaYUsuario.set(clave, resultado.votoUsuario);
+  }
+
+  return { ok: true, votos: pregunta.votos, votoUsuario: resultado.votoUsuario };
+}
+
+export function aceptarRespuestaEnAlmacen(
+  preguntaId: string,
+  usuarioUid: string,
+  respuestaId: string
+):
+  | { ok: true; aceptadaId: string }
+  | { ok: false; status: 403 | 404; error: string } {
+  const pregunta = obtenerPreguntaPorId(preguntaId);
+  if (!pregunta) {
+    return { ok: false, status: 404, error: "Pregunta no encontrada" };
+  }
+  if (pregunta.autorUid !== usuarioUid) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Solo el autor de la pregunta puede aceptar una respuesta",
+    };
+  }
+  const existeRespuesta = pregunta.listaRespuestas.some(
+    (r) => r.id === respuestaId
+  );
+  if (!existeRespuesta) {
+    return { ok: false, status: 404, error: "Respuesta no encontrada" };
+  }
+
+  pregunta.aceptadaId = respuestaId;
+  return { ok: true, aceptadaId: respuestaId };
+}

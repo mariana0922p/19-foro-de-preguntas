@@ -2,7 +2,12 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import type { PreguntaItem } from "@/repositories/preguntas.mock";
+import { VoteControls } from "@/components/VoteControls";
+import { crearRespuestaSchema } from "@/schemas/pregunta.schema";
+import {
+  USUARIO_DEMO_ACTUAL,
+  type PreguntaItem,
+} from "@/repositories/preguntas.mock";
 
 export default function DetallePreguntaPage({
   params,
@@ -14,6 +19,11 @@ export default function DetallePreguntaPage({
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [intento, setIntento] = useState(0);
+
+  const [nuevaRespuesta, setNuevaRespuesta] = useState("");
+  const [errorRespuesta, setErrorRespuesta] = useState<string | null>(null);
+  const [enviandoRespuesta, setEnviandoRespuesta] = useState(false);
+  const [mensajeAccion, setMensajeAccion] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -47,6 +57,67 @@ export default function DetallePreguntaPage({
 
     return () => controller.abort();
   }, [id, intento]);
+
+  async function manejarEnviarRespuesta(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorRespuesta(null);
+    setMensajeAccion(null);
+
+    const validacion = crearRespuestaSchema.safeParse({ cuerpo: nuevaRespuesta });
+    if (!validacion.success) {
+      setErrorRespuesta(validacion.error.issues[0]?.message ?? "Respuesta inválida");
+      return;
+    }
+
+    setEnviandoRespuesta(true);
+    try {
+      const res = await fetch(
+        `/api/preguntas/${encodeURIComponent(id)}/respuestas`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(validacion.data),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorRespuesta(data.error || "No se pudo publicar la respuesta.");
+        return;
+      }
+
+      setNuevaRespuesta("");
+      setMensajeAccion("Respuesta publicada correctamente.");
+      setIntento((n) => n + 1);
+    } catch {
+      setErrorRespuesta("Error de conexión al publicar la respuesta.");
+    } finally {
+      setEnviandoRespuesta(false);
+    }
+  }
+
+  async function manejarAceptarRespuesta(respuestaId: string) {
+    setMensajeAccion(null);
+    try {
+      const res = await fetch(
+        `/api/preguntas/${encodeURIComponent(id)}/aceptar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ respuestaId }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setMensajeAccion(data.error || "No se pudo aceptar la respuesta.");
+        return;
+      }
+      setMensajeAccion("Respuesta marcada como aceptada.");
+      setIntento((n) => n + 1);
+    } catch {
+      setMensajeAccion("Error de conexión al aceptar la respuesta.");
+    }
+  }
 
   if (cargando) {
     return (
@@ -87,6 +158,8 @@ export default function DetallePreguntaPage({
     );
   }
 
+  const esAutorPregunta = pregunta.autorUid === USUARIO_DEMO_ACTUAL.uid;
+
   return (
     <div className="space-y-8">
       <nav aria-label="Ruta de navegación">
@@ -114,7 +187,6 @@ export default function DetallePreguntaPage({
                 day: "numeric",
               })}
             </time>
-            <span>Votos: {pregunta.votos}</span>
           </div>
         </header>
 
@@ -132,7 +204,24 @@ export default function DetallePreguntaPage({
             </li>
           ))}
         </ul>
+
+        <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <VoteControls
+            preguntaId={pregunta.id}
+            votosIniciales={pregunta.votos}
+            esAutorPropio={esAutorPregunta}
+          />
+        </div>
       </article>
+
+      {mensajeAccion && (
+        <div
+          aria-live="polite"
+          className="rounded-md border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200"
+        >
+          {mensajeAccion}
+        </div>
+      )}
 
       <section aria-labelledby="titulo-respuestas" className="space-y-4">
         <h2
@@ -145,7 +234,7 @@ export default function DetallePreguntaPage({
 
         {pregunta.listaRespuestas.length === 0 ? (
           <p className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-            Aún no hay respuestas para esta pregunta.
+            Aún no hay respuestas para esta pregunta. ¡Sé el primero en responder!
           </p>
         ) : (
           <div className="space-y-4">
@@ -160,11 +249,25 @@ export default function DetallePreguntaPage({
                       : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
                   }`}
                 >
-                  {esAceptada && (
-                    <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
-                      ✓ Respuesta aceptada por el autor
-                    </p>
-                  )}
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    {esAceptada ? (
+                      <p className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
+                        ✓ Respuesta aceptada por el autor
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+
+                    {esAutorPregunta && !esAceptada && (
+                      <button
+                        type="button"
+                        onClick={() => manejarAceptarRespuesta(resp.id)}
+                        className="min-h-11 rounded-md border border-emerald-700 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                      >
+                        Marcar como aceptada
+                      </button>
+                    )}
+                  </div>
 
                   <p className="whitespace-pre-line text-base leading-relaxed text-slate-800 dark:text-slate-200 max-w-[70ch]">
                     {resp.cuerpo}
@@ -194,6 +297,55 @@ export default function DetallePreguntaPage({
             })}
           </div>
         )}
+      </section>
+
+      <section
+        aria-labelledby="titulo-nueva-respuesta"
+        className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+      >
+        <h2
+          id="titulo-nueva-respuesta"
+          className="text-lg font-bold text-slate-900 dark:text-slate-100"
+        >
+          Tu respuesta
+        </h2>
+        <form onSubmit={manejarEnviarRespuesta} noValidate className="mt-4 space-y-4">
+          <div>
+            <label
+              htmlFor="textarea-respuesta"
+              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Escribe tu explicación (mínimo 20 caracteres)
+            </label>
+            <textarea
+              id="textarea-respuesta"
+              rows={5}
+              value={nuevaRespuesta}
+              onChange={(e) => setNuevaRespuesta(e.target.value)}
+              aria-invalid={Boolean(errorRespuesta)}
+              aria-describedby={errorRespuesta ? "error-respuesta" : undefined}
+              placeholder="Comparte una solución clara y bien fundamentada..."
+              className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            />
+            {errorRespuesta && (
+              <p
+                id="error-respuesta"
+                role="alert"
+                className="mt-1.5 text-xs font-medium text-red-700 dark:text-red-400"
+              >
+                {errorRespuesta}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={enviandoRespuesta}
+            className="min-h-11 rounded-md bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          >
+            {enviandoRespuesta ? "Publicando respuesta..." : "Publicar respuesta"}
+          </button>
+        </form>
       </section>
     </div>
   );
