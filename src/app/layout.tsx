@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
+import { SesionHeader } from "@/components/SesionHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,24 +34,7 @@ export default function RootLayout({
             </Link>
 
             <nav aria-label="Navegación principal">
-              <ul className="flex flex-wrap items-center gap-3 text-sm font-medium">
-                <li>
-                  <Link
-                    href="/"
-                    className="inline-flex min-h-11 items-center rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  >
-                    Preguntas
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/preguntas/nueva"
-                    className="inline-flex min-h-11 items-center rounded-md bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-                  >
-                    + Hacer pregunta
-                  </Link>
-                </li>
-              </ul>
+              <SesionHeader />
             </nav>
           </div>
         </header>

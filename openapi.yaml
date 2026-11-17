@@ -1,15 +1,26 @@
 ﻿openapi: 3.0.3
 info:
   title: API Foro de Preguntas y Respuestas (Proyecto 19)
-  version: 1.0.0
-  description: API REST por capas (Next.js App Router + Zod + Firebase Admin SDK) para gestionar preguntas, respuestas, votos y aceptación.
+  version: 1.1.0
+  description: >
+    API REST por capas (Next.js App Router + Zod + Firebase Admin SDK) para
+    gestionar preguntas, respuestas, comentarios, votos, aceptación de
+    respuestas, reputación y moderación.
+
+    Autenticación: cookie de sesión HttpOnly `sesion` (creada por
+    `POST /api/auth/sesion` a partir de un ID token de Firebase) o cabecera
+    `Authorization: Bearer <idToken>`.
 servers:
   - url: http://localhost:3000
     description: Servidor local de desarrollo
+security:
+  - cookieAuth: []
+  - bearerAuth: []
 paths:
   /api/preguntas:
     get:
-      summary: Listar preguntas publicadas
+      summary: Listar preguntas publicadas (paginación por cursor)
+      security: []
       parameters:
         - in: query
           name: q
@@ -27,15 +38,39 @@ paths:
             type: string
             enum: [recientes, populares]
             default: recientes
+        - in: query
+          name: limite
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: cursor
+          description: Id de la última pregunta de la página anterior.
+          schema:
+            type: string
+            maxLength: 200
       responses:
         "200":
-          description: Lista de preguntas
-        "400":
-          description: Parámetros inválidos
+          description: Página de preguntas
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: object
+                required: [items, siguienteCursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Pregunta"
+                  siguienteCursor:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ValidacionFallida"
+        "429":
+          $ref: "#/components/responses/DemasiadasSolicitudes"
     post:
       summary: Crear una nueva pregunta
       requestBody:
@@ -46,38 +81,38 @@ paths:
               $ref: "#/components/schemas/CrearPreguntaInput"
       responses:
         "201":
-          description: Pregunta creada exitosamente
-        "400":
-          description: Error de validación Zod
+          description: Pregunta creada
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: object
+                properties:
+                  pregunta:
+                    $ref: "#/components/schemas/Pregunta"
+        "400":
+          $ref: "#/components/responses/ValidacionFallida"
         "401":
-          description: Sesión no iniciada
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/OrigenNoPermitido"
+        "429":
+          $ref: "#/components/responses/DemasiadasSolicitudes"
   /api/preguntas/{id}:
     get:
       summary: Obtener detalle de una pregunta y sus respuestas
+      security: []
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/PreguntaId"
       responses:
         "200":
           description: Detalle de la pregunta
         "404":
-          description: Pregunta no encontrada
+          $ref: "#/components/responses/NoEncontrado"
   /api/preguntas/{id}/respuestas:
     post:
       summary: Publicar una respuesta en una pregunta
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/PreguntaId"
       requestBody:
         required: true
         content:
@@ -88,17 +123,44 @@ paths:
         "201":
           description: Respuesta publicada
         "400":
-          description: Validación fallida
+          $ref: "#/components/responses/ValidacionFallida"
         "401":
-          description: No autenticado
+          $ref: "#/components/responses/NoAutenticado"
         "404":
-          description: Pregunta no encontrada
+          $ref: "#/components/responses/NoEncontrado"
   /api/preguntas/{id}/votos:
     post:
       summary: Votar a favor (1) o en contra (-1) una pregunta
       parameters:
+        - $ref: "#/components/parameters/PreguntaId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VotarInput"
+      responses:
+        "200":
+          description: Voto aplicado o revertido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultadoVoto"
+        "400":
+          $ref: "#/components/responses/ValidacionFallida"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          description: No se permite votar la propia publicación
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+  /api/preguntas/{id}/respuestas/{rid}/votos:
+    post:
+      summary: Votar a favor (1) o en contra (-1) una respuesta
+      parameters:
+        - $ref: "#/components/parameters/PreguntaId"
         - in: path
-          name: id
+          name: rid
           required: true
           schema:
             type: string
@@ -111,23 +173,23 @@ paths:
       responses:
         "200":
           description: Voto aplicado o revertido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultadoVoto"
         "400":
-          description: Valor de voto inválido
+          $ref: "#/components/responses/ValidacionFallida"
         "401":
-          description: No autenticado
+          $ref: "#/components/responses/NoAutenticado"
         "403":
-          description: No se permite votar la propia publicación
+          description: No se permite votar la propia respuesta
         "404":
-          description: Pregunta no encontrada
+          $ref: "#/components/responses/NoEncontrado"
   /api/preguntas/{id}/aceptar:
     post:
-      summary: Marcar una respuesta como aceptada (solo autor)
+      summary: Marcar una respuesta como aceptada (solo el autor de la pregunta)
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/PreguntaId"
       requestBody:
         required: true
         content:
@@ -138,18 +200,289 @@ paths:
         "200":
           description: Respuesta marcada como aceptada
         "400":
-          description: Solicitud inválida
+          $ref: "#/components/responses/ValidacionFallida"
         "401":
-          description: No autenticado
+          $ref: "#/components/responses/NoAutenticado"
         "403":
           description: Solo el autor de la pregunta puede aceptar respuestas
         "404":
-          description: Pregunta o respuesta no encontrada
+          $ref: "#/components/responses/NoEncontrado"
+  /api/preguntas/{id}/comentarios:
+    get:
+      summary: Listar los comentarios de una pregunta
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/PreguntaId"
+      responses:
+        "200":
+          description: Comentarios ordenados por fecha
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Comentario"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+    post:
+      summary: Añadir un comentario a una pregunta
+      parameters:
+        - $ref: "#/components/parameters/PreguntaId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrearComentarioInput"
+      responses:
+        "201":
+          description: Comentario creado
+        "400":
+          $ref: "#/components/responses/ValidacionFallida"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "429":
+          $ref: "#/components/responses/DemasiadasSolicitudes"
+  /api/auth/sesion:
+    post:
+      summary: Crear una cookie de sesión HttpOnly a partir de un ID token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              additionalProperties: false
+              properties:
+                idToken:
+                  type: string
+                  minLength: 20
+      responses:
+        "204":
+          description: Cookie `sesion` creada
+        "400":
+          $ref: "#/components/responses/ValidacionFallida"
+        "429":
+          $ref: "#/components/responses/DemasiadasSolicitudes"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+    delete:
+      summary: Cerrar la sesión y borrar la cookie
+      security: []
+      responses:
+        "204":
+          description: Cookie eliminada y refresh tokens revocados
+  /api/auth/yo:
+    get:
+      summary: Obtener el usuario de la sesión actual
+      responses:
+        "200":
+          description: Usuario autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [usuario]
+                properties:
+                  usuario:
+                    $ref: "#/components/schemas/UsuarioSesion"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+  /api/admin/preguntas/{id}/ocultar:
+    patch:
+      summary: Ocultar o restaurar una pregunta (solo rol admin)
+      parameters:
+        - $ref: "#/components/parameters/PreguntaId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [oculta]
+              additionalProperties: false
+              properties:
+                oculta:
+                  type: boolean
+      responses:
+        "200":
+          description: Estado de moderación actualizado
+        "400":
+          $ref: "#/components/responses/ValidacionFallida"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          description: Solo los moderadores pueden ocultar o restaurar preguntas
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sesion
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase ID token
+  parameters:
+    PreguntaId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+  responses:
+    ValidacionFallida:
+      description: Datos de entrada inválidos
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NoAutenticado:
+      description: Debes iniciar sesión para realizar esta acción
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    OrigenNoPermitido:
+      description: El origen de la petición no coincide con el servidor
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NoEncontrado:
+      description: Recurso no encontrado o moderado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    DemasiadasSolicitudes:
+      description: Límite de peticiones superado
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ErrorInterno:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    Pregunta:
+      type: object
+      required:
+        - id
+        - autorUid
+        - autorNombre
+        - titulo
+        - cuerpo
+        - etiquetas
+        - votos
+        - respuestas
+        - creadaEn
+      properties:
+        id:
+          type: string
+        autorUid:
+          type: string
+        autorNombre:
+          type: string
+        titulo:
+          type: string
+        cuerpo:
+          type: string
+        etiquetas:
+          type: array
+          items:
+            type: string
+        votos:
+          type: integer
+        respuestas:
+          type: integer
+        aceptadaId:
+          type: string
+          nullable: true
+        oculta:
+          type: boolean
+        creadaEn:
+          type: string
+          format: date-time
+        listaRespuestas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Respuesta"
+    Respuesta:
+      type: object
+      properties:
+        id:
+          type: string
+        autorUid:
+          type: string
+        autorNombre:
+          type: string
+        cuerpo:
+          type: string
+        votos:
+          type: integer
+        creadaEn:
+          type: string
+          format: date-time
+    Comentario:
+      type: object
+      properties:
+        id:
+          type: string
+        autorUid:
+          type: string
+        autorNombre:
+          type: string
+        cuerpo:
+          type: string
+        creadaEn:
+          type: string
+          format: date-time
+    UsuarioSesion:
+      type: object
+      required: [uid, nombre, rol]
+      properties:
+        uid:
+          type: string
+        nombre:
+          type: string
+        correo:
+          type: string
+          nullable: true
+        rol:
+          type: string
+          enum: [estudiante, admin]
+    ResultadoVoto:
+      type: object
+      required: [votos, votoUsuario]
+      properties:
+        votos:
+          type: integer
+        votoUsuario:
+          type: integer
+          enum: [1, -1]
+          nullable: true
     CrearPreguntaInput:
       type: object
       required: [titulo, cuerpo, etiquetas]
+      additionalProperties: false
       properties:
         titulo:
           type: string
@@ -165,17 +498,30 @@ components:
           maxItems: 5
           items:
             type: string
+            minLength: 2
+            maxLength: 30
     CrearRespuestaInput:
       type: object
       required: [cuerpo]
+      additionalProperties: false
       properties:
         cuerpo:
           type: string
           minLength: 20
           maxLength: 5000
+    CrearComentarioInput:
+      type: object
+      required: [cuerpo]
+      additionalProperties: false
+      properties:
+        cuerpo:
+          type: string
+          minLength: 2
+          maxLength: 500
     VotarInput:
       type: object
       required: [valor]
+      additionalProperties: false
       properties:
         valor:
           type: integer
@@ -183,6 +529,7 @@ components:
     AceptarRespuestaInput:
       type: object
       required: [respuestaId]
+      additionalProperties: false
       properties:
         respuestaId:
           type: string

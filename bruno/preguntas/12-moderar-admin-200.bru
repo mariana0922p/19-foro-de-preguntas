@@ -1,0 +1,22 @@
+meta {
+  name: 12 - Moderador oculta pregunta (200)
+  type: http
+  seq: 12
+}
+
+patch {
+  url: http://localhost:3000/api/admin/preguntas/preg-1/ocultar
+  body: json
+  auth: none
+}
+
+headers {
+  x-demo-uid: usr-admin
+  x-demo-rol: admin
+}
+
+body:json {
+  {
+    "oculta": true
+  }
+}

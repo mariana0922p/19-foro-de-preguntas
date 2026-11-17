@@ -7,6 +7,9 @@ interface VoteControlsProps {
   preguntaId: string;
   votosIniciales: number;
   esAutorPropio?: boolean;
+  /** Ruta a la que se envía el voto. Por defecto, la de la pregunta. */
+  endpoint?: string;
+  descripcion?: string;
 }
 
 interface EstadoVoto {
@@ -18,6 +21,8 @@ export function VoteControls({
   preguntaId,
   votosIniciales,
   esAutorPropio = false,
+  endpoint,
+  descripcion,
 }: VoteControlsProps) {
   const [estadoReal, setEstadoReal] = useState<EstadoVoto>({
     votos: votosIniciales,
@@ -42,7 +47,10 @@ export function VoteControls({
       aplicarVotoOptimista(valor);
 
       try {
-        const res = await fetch(`/api/preguntas/${encodeURIComponent(preguntaId)}/votos`, {
+        const url =
+          endpoint ??
+          `/api/preguntas/${encodeURIComponent(preguntaId)}/votos`;
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ valor }),
@@ -69,7 +77,7 @@ export function VoteControls({
       <div
         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1.5 dark:border-slate-700 dark:bg-slate-800/60"
         role="group"
-        aria-label="Votar esta pregunta"
+        aria-label={descripcion ?? "Votar esta pregunta"}
       >
         <button
           type="button"

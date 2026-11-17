@@ -1,0 +1,21 @@
+meta {
+  name: 10 - Votar respuesta propia (403)
+  type: http
+  seq: 10
+}
+
+post {
+  url: http://localhost:3000/api/preguntas/preg-1/respuestas/resp-101/votos
+  body: json
+  auth: none
+}
+
+headers {
+  x-demo-uid: usr-carlos
+}
+
+body:json {
+  {
+    "valor": 1
+  }
+}

@@ -1,17 +1,57 @@
-﻿import { Suspense } from "react";
-import DetallePreguntaClient from "./DetallePreguntaClient";
+﻿import { Suspense, cache } from "react";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { ComentariosPregunta } from "./ComentariosPregunta";
+import { DetallePregunta } from "./DetallePregunta";
+import { EsqueletoComentarios } from "./EsqueletoComentarios";
+import { leerUsuarioSesion } from "@/lib/sesion";
+import { crearServicioPreguntas } from "@/services/preguntas.service";
 
-export default function DetallePreguntaPage() {
+export const dynamic = "force-dynamic";
+
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+const cargarPregunta = cache(async (id: string) => {
+  try {
+    return await crearServicioPreguntas().obtenerDetalle(id);
+  } catch {
+    return null;
+  }
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const pregunta = await cargarPregunta(id);
+
+  if (!pregunta) {
+    return { title: "Pregunta no encontrada · Foro Académico" };
+  }
+
+  return {
+    title: `${pregunta.titulo} · Foro Académico`,
+    description: pregunta.cuerpo.slice(0, 150),
+  };
+}
+
+export default async function PreguntaPage({ params }: Props) {
+  const { id } = await params;
+  const pregunta = await cargarPregunta(id);
+
+  if (!pregunta) {
+    notFound();
+  }
+
+  const usuario = await leerUsuarioSesion();
+
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-4" aria-label="Cargando detalle de pregunta">
-          <div className="h-8 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-          <div className="h-40 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-        </div>
-      }
-    >
-      <DetallePreguntaClient />
-    </Suspense>
+    <>
+      <DetallePregunta pregunta={pregunta} usuario={usuario} />
+
+      <Suspense fallback={<EsqueletoComentarios />}>
+        <ComentariosPregunta preguntaId={pregunta.id} usuario={usuario} />
+      </Suspense>
+    </>
   );
 }

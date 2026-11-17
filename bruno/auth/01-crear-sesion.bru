@@ -1,0 +1,22 @@
+meta {
+  name: 01 - Crear cookie de sesión (204)
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:3000/api/auth/sesion
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "idToken": "{{idToken}}"
+  }
+}
+
+docs {
+  Canjea un ID token real de Firebase (obtenido en /login) por la cookie
+  HttpOnly `sesion`. En modo demostración no es necesario: usa x-demo-uid.
+}

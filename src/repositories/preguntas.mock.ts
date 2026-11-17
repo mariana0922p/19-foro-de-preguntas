@@ -9,6 +9,14 @@ export interface RespuestaItem {
   creadaEn: string;
 }
 
+export interface ComentarioItem {
+  id: string;
+  autorUid: string;
+  autorNombre: string;
+  cuerpo: string;
+  creadaEn: string;
+}
+
 export interface PreguntaItem {
   id: string;
   autorUid: string;
@@ -108,10 +116,14 @@ const DATOS_INICIALES: PreguntaItem[] = [
 
 let almacenPreguntas: PreguntaItem[] = structuredClone(DATOS_INICIALES);
 const votosPorPreguntaYUsuario = new Map<string, 1 | -1>();
+const votosPorRespuestaYUsuario = new Map<string, 1 | -1>();
+const comentariosPorPregunta = new Map<string, ComentarioItem[]>();
 
 export function reiniciarAlmacenMock() {
   almacenPreguntas = structuredClone(DATOS_INICIALES);
   votosPorPreguntaYUsuario.clear();
+  votosPorRespuestaYUsuario.clear();
+  comentariosPorPregunta.clear();
 }
 
 export function listarPreguntas(): PreguntaItem[] {
@@ -173,7 +185,13 @@ export function votarPreguntaEnAlmacen(
   usuarioUid: string,
   valor: 1 | -1
 ):
-  | { ok: true; votos: number; votoUsuario: 1 | -1 | null }
+  | {
+      ok: true;
+      votos: number;
+      votoUsuario: 1 | -1 | null;
+      autorUid: string;
+      variacion: number;
+    }
   | { ok: false; status: 403 | 404; error: string } {
   const pregunta = obtenerPreguntaPorId(preguntaId);
   if (!pregunta) {
@@ -189,6 +207,7 @@ export function votarPreguntaEnAlmacen(
 
   const clave = `${preguntaId}:${usuarioUid}`;
   const votoPrevio = votosPorPreguntaYUsuario.get(clave) ?? null;
+  const votosAnteriores = pregunta.votos;
   const resultado = calcularNuevoEstadoVoto({
     votosActuales: pregunta.votos,
     votoPrevioUsuario: votoPrevio,
@@ -202,7 +221,13 @@ export function votarPreguntaEnAlmacen(
     votosPorPreguntaYUsuario.set(clave, resultado.votoUsuario);
   }
 
-  return { ok: true, votos: pregunta.votos, votoUsuario: resultado.votoUsuario };
+  return {
+    ok: true,
+    votos: pregunta.votos,
+    votoUsuario: resultado.votoUsuario,
+    autorUid: pregunta.autorUid,
+    variacion: pregunta.votos - votosAnteriores,
+  };
 }
 
 export function aceptarRespuestaEnAlmacen(
@@ -210,7 +235,12 @@ export function aceptarRespuestaEnAlmacen(
   usuarioUid: string,
   respuestaId: string
 ):
-  | { ok: true; aceptadaId: string }
+  | {
+      ok: true;
+      aceptadaId: string;
+      autorRespuestaUid: string;
+      aceptadaPreviaUid: string | null;
+    }
   | { ok: false; status: 403 | 404; error: string } {
   const pregunta = obtenerPreguntaPorId(preguntaId);
   if (!pregunta) {
@@ -223,15 +253,109 @@ export function aceptarRespuestaEnAlmacen(
       error: "Solo el autor de la pregunta puede aceptar una respuesta",
     };
   }
-  const existeRespuesta = pregunta.listaRespuestas.some(
-    (r) => r.id === respuestaId
-  );
-  if (!existeRespuesta) {
+  const respuesta = pregunta.listaRespuestas.find((r) => r.id === respuestaId);
+  if (!respuesta) {
     return { ok: false, status: 404, error: "Respuesta no encontrada" };
   }
 
+  const aceptadaPrevia = pregunta.aceptadaId
+    ? pregunta.listaRespuestas.find((r) => r.id === pregunta.aceptadaId)
+    : undefined;
+
   pregunta.aceptadaId = respuestaId;
-  return { ok: true, aceptadaId: respuestaId };
+  return {
+    ok: true,
+    aceptadaId: respuestaId,
+    autorRespuestaUid: respuesta.autorUid,
+    aceptadaPreviaUid: aceptadaPrevia?.autorUid ?? null,
+  };
+}
+
+export function listarPreguntasPorAutor(autorUid: string): PreguntaItem[] {
+  return almacenPreguntas.filter((p) => p.autorUid === autorUid && !p.oculta);
+}
+
+export function listarComentariosDePregunta(
+  preguntaId: string
+): ComentarioItem[] {
+  return [...(comentariosPorPregunta.get(preguntaId) ?? [])];
+}
+
+export function agregarComentarioEnAlmacen(
+  preguntaId: string,
+  datos: { autorUid: string; autorNombre: string; cuerpo: string }
+): ComentarioItem | null {
+  if (!obtenerPreguntaPorId(preguntaId)) return null;
+
+  const comentario: ComentarioItem = {
+    id: `com-${Date.now()}-${Math.round(Math.random() * 1000)}`,
+    autorUid: datos.autorUid,
+    autorNombre: datos.autorNombre,
+    cuerpo: datos.cuerpo,
+    creadaEn: new Date().toISOString(),
+  };
+
+  const lista = comentariosPorPregunta.get(preguntaId) ?? [];
+  lista.push(comentario);
+  comentariosPorPregunta.set(preguntaId, lista);
+  return comentario;
+}
+
+export function votarRespuestaEnAlmacen(
+  preguntaId: string,
+  respuestaId: string,
+  usuarioUid: string,
+  valor: 1 | -1
+):
+  | {
+      ok: true;
+      votos: number;
+      votoUsuario: 1 | -1 | null;
+      autorUid: string;
+      variacion: number;
+    }
+  | { ok: false; status: 403 | 404; error: string } {
+  const pregunta = obtenerPreguntaPorId(preguntaId);
+  if (!pregunta) {
+    return { ok: false, status: 404, error: "Pregunta no encontrada" };
+  }
+
+  const respuesta = pregunta.listaRespuestas.find((r) => r.id === respuestaId);
+  if (!respuesta) {
+    return { ok: false, status: 404, error: "Respuesta no encontrada" };
+  }
+
+  if (respuesta.autorUid === usuarioUid) {
+    return {
+      ok: false,
+      status: 403,
+      error: "No puedes votar tu propia publicación",
+    };
+  }
+
+  const clave = `${preguntaId}:${respuestaId}:${usuarioUid}`;
+  const votoPrevio = votosPorRespuestaYUsuario.get(clave) ?? null;
+  const votosAnteriores = respuesta.votos;
+  const resultado = calcularNuevoEstadoVoto({
+    votosActuales: respuesta.votos,
+    votoPrevioUsuario: votoPrevio,
+    nuevoValor: valor,
+  });
+
+  respuesta.votos = resultado.votos;
+  if (resultado.votoUsuario === null) {
+    votosPorRespuestaYUsuario.delete(clave);
+  } else {
+    votosPorRespuestaYUsuario.set(clave, resultado.votoUsuario);
+  }
+
+  return {
+    ok: true,
+    votos: respuesta.votos,
+    votoUsuario: resultado.votoUsuario,
+    autorUid: respuesta.autorUid,
+    variacion: respuesta.votos - votosAnteriores,
+  };
 }
 
 export function moderarPreguntaEnAlmacen(

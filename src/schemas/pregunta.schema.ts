@@ -29,6 +29,16 @@ export const crearRespuestaSchema = z
   })
   .strict();
 
+export const crearComentarioSchema = z
+  .object({
+    cuerpo: z
+      .string()
+      .trim()
+      .min(2, "El comentario debe tener al menos 2 caracteres")
+      .max(500, "El comentario no puede superar los 500 caracteres"),
+  })
+  .strict();
+
 export const votarSchema = z
   .object({
     valor: z.union([z.literal(1), z.literal(-1)]),
@@ -51,10 +61,13 @@ export const filtroPreguntasSchema = z.object({
   q: z.string().trim().max(100).optional(),
   etiqueta: z.string().trim().max(30).optional(),
   orden: z.enum(["recientes", "populares"]).default("recientes"),
+  limite: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().trim().max(200).optional(),
 });
 
 export type CrearPreguntaInput = z.infer<typeof crearPreguntaSchema>;
 export type CrearRespuestaInput = z.infer<typeof crearRespuestaSchema>;
+export type CrearComentarioInput = z.infer<typeof crearComentarioSchema>;
 export type VotarInput = z.infer<typeof votarSchema>;
 export type AceptarRespuestaInput = z.infer<typeof aceptarRespuestaSchema>;
 export type ModerarPreguntaInput = z.infer<typeof moderarPreguntaSchema>;
