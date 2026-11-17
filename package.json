@@ -14,7 +14,8 @@
         "firebase:users": "node --env-file=.env.local scripts/listar-usuarios.mjs",
         "firebase:dominio": "node --env-file=.env.local scripts/autorizar-dominio.mjs",
         "firebase:reglas": "node --env-file=.env.local scripts/desplegar-reglas.mjs",
-        "firebase:probar-registro": "node --env-file=.env.local scripts/probar-registro.mjs"
+        "firebase:probar-registro": "node --env-file=.env.local scripts/probar-registro.mjs",
+        "firebase:moderar": "node --env-file=.env.local scripts/moderar-pregunta.mjs"
     },
     "dependencies": {
         "@tailwindcss/postcss": "^4.3.5",

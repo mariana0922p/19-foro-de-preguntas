@@ -22,6 +22,48 @@ export function DetallePregunta({ pregunta, usuario }: DetallePreguntaProps) {
   const [enviandoRespuesta, setEnviandoRespuesta] = useState(false);
   const [mensajeAccion, setMensajeAccion] = useState<string | null>(null);
   const [requiereSesion, setRequiereSesion] = useState(false);
+  const [ocultando, setOcultando] = useState(false);
+  const [errorModeracion, setErrorModeracion] = useState<string | null>(null);
+
+  const esAdmin = usuario?.rol === "admin";
+
+  async function manejarOcultarPregunta() {
+    setErrorModeracion(null);
+    if (
+      !window.confirm(
+        "¿Ocultar esta pregunta? Dejará de aparecer en el foro para todos."
+      )
+    ) {
+      return;
+    }
+
+    setOcultando(true);
+    try {
+      const respuesta = await fetch(
+        `/api/admin/preguntas/${encodeURIComponent(pregunta.id)}/ocultar`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oculta: true }),
+        }
+      );
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        setErrorModeracion(
+          datos.error || "No se pudo ocultar la pregunta."
+        );
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setErrorModeracion("Error de conexión al ocultar la pregunta.");
+    } finally {
+      setOcultando(false);
+    }
+  }
 
   const esAutorPregunta = Boolean(
     usuario && usuario.uid === pregunta.autorUid
@@ -171,6 +213,37 @@ export function DetallePregunta({ pregunta, usuario }: DetallePreguntaProps) {
           />
         </div>
       </article>
+
+      {esAdmin && (
+        <section
+          aria-labelledby="titulo-moderacion"
+          className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40"
+        >
+          <h2
+            id="titulo-moderacion"
+            className="text-sm font-bold text-amber-900 dark:text-amber-200"
+          >
+            Moderación (solo administradores)
+          </h2>
+          <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+            Ocultar la pregunta la quita del listado, de la búsqueda y de su
+            enlace directo. Se puede restaurar con <code>PATCH /api/admin/preguntas/[id]/ocultar</code>.
+          </p>
+          <button
+            type="button"
+            onClick={manejarOcultarPregunta}
+            disabled={ocultando}
+            className="mt-3 min-h-11 rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+          >
+            {ocultando ? "Ocultando..." : "Ocultar esta pregunta"}
+          </button>
+          {errorModeracion && (
+            <p role="alert" className="mt-2 text-xs font-medium text-red-700 dark:text-red-400">
+              {errorModeracion}
+            </p>
+          )}
+        </section>
+      )}
 
       {mensajeAccion && (
         <div
