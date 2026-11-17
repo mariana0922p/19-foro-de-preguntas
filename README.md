@@ -71,6 +71,74 @@ estudiante. Construida con **Next.js 16 (App Router)**, **React 19**,
 > `x-demo-uid`, `x-demo-nombre` y `x-demo-rol`. Es útil para pruebas y para
 > Bruno, pero **no debe usarse en producción**.
 
+## Configuración de Firebase
+
+Proyecto: **`foro-preguntas-1ca6b`**.
+
+1. En la consola de Firebase → **Authentication → Sign-in method**, habilita
+   **Correo electrónico/contraseña**.
+2. En **Firestore Database**, crea la base de datos (modo producción).
+3. Despliega las reglas de `firestore.rules` (niegan todo acceso directo desde
+   el cliente; solo el Admin SDK escribe desde el servidor):
+
+   ```bash
+   npx firebase-tools login
+   npx firebase-tools deploy --only firestore:rules
+   ```
+
+   También puedes pegarlas a mano en **Firestore → Reglas**.
+4. Genera una cuenta de servicio: **Configuración del proyecto → Cuentas de
+   servicio → Generar nueva clave privada** y copia los valores a `.env.local`.
+
+### Scripts de administración
+
+```bash
+npm run firebase:check                     # Diagnóstico: Firestore, Auth y dominios
+npm run firebase:seed                      # Siembra datos de ejemplo (idempotente)
+npm run firebase:admin -- correo@ejemplo.com  # Da rol admin a un usuario
+```
+
+Para convertir a alguien en moderador debe existir primero en
+**Authentication** (se registra desde `/login`). Después de `firebase:admin`
+hay que cerrar sesión y volver a entrar para que el claim `rol: "admin"`
+llegue al token.
+
+Existen dos modos de acceso:
+
+- **Modo demo** (sin variables del Admin SDK): datos en memoria y cabeceras
+  `x-demo-*`. Solo para desarrollo.
+- **Modo real** (con las tres variables `FIREBASE_*`): exige cookie `sesion` o
+  `Authorization: Bearer <idToken>` y persiste en Firestore.
+
+## Despliegue en Vercel
+
+1. Importa el repositorio en <https://vercel.com/new> y deja el framework
+   **Next.js** con los valores por defecto (`npm run build`).
+2. En **Settings → Environment Variables** agrega las variables para
+   *Production* (y *Preview* si quieres):
+
+   | Variable | Valor |
+   | --- | --- |
+   | `NEXT_PUBLIC_FIREBASE_API_KEY` | API key del SDK web |
+   | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `foro-preguntas-1ca6b.firebaseapp.com` |
+   | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `foro-preguntas-1ca6b` |
+   | `NEXT_PUBLIC_FIREBASE_APP_ID` | App ID del SDK web |
+   | `FIREBASE_PROJECT_ID` | `foro-preguntas-1ca6b` |
+   | `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-...@....iam.gserviceaccount.com` |
+   | `FIREBASE_PRIVATE_KEY` | Clave privada completa, con los `\n` literales |
+
+   > La clave privada va entre comillas dobles y **conservando los `\n`**. El
+   > código hace `.replace(/\\n/g, "\n")` antes de usarla. Nunca subas
+   > `.env.local` al repositorio.
+
+3. Despliega y anota el dominio asignado (por ejemplo
+   `19-foro-de-preguntas.vercel.app`).
+4. En Firebase → **Authentication → Settings → Authorized domains**, añade ese
+   dominio. Sin este paso el login falla con `auth/unauthorized-domain`.
+5. Entra a `/login`, crea tu cuenta y, si quieres moderar, ejecuta
+   `npm run firebase:admin -- tu-correo@ejemplo.com` desde local (usa la misma
+   base de datos) y vuelve a iniciar sesión.
+
 ## Rutas de la aplicación
 
 | Ruta | Descripción |

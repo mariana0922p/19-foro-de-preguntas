@@ -7,7 +7,10 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint",
-        "test": "vitest run"
+        "test": "vitest run",
+        "firebase:check": "node --env-file=.env.local scripts/verificar-firebase.mjs",
+        "firebase:seed": "node --env-file=.env.local scripts/sembrar-firestore.mjs",
+        "firebase:admin": "node --env-file=.env.local scripts/hacer-admin.mjs"
     },
     "dependencies": {
         "@tailwindcss/postcss": "^4.3.5",
