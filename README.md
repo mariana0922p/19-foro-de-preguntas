@@ -112,6 +112,8 @@ Existen dos modos de acceso:
 
 ## Despliegue en Vercel
 
+> **Producción actual:** <https://19-foro-de-preguntas.vercel.app>
+
 1. Importa el repositorio en <https://vercel.com/new> y deja el framework
    **Next.js** con los valores por defecto (`npm run build`).
 2. En **Settings → Environment Variables** agrega las variables para

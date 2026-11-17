@@ -10,7 +10,10 @@
         "test": "vitest run",
         "firebase:check": "node --env-file=.env.local scripts/verificar-firebase.mjs",
         "firebase:seed": "node --env-file=.env.local scripts/sembrar-firestore.mjs",
-        "firebase:admin": "node --env-file=.env.local scripts/hacer-admin.mjs"
+        "firebase:admin": "node --env-file=.env.local scripts/hacer-admin.mjs",
+        "firebase:users": "node --env-file=.env.local scripts/listar-usuarios.mjs",
+        "firebase:dominio": "node --env-file=.env.local scripts/autorizar-dominio.mjs",
+        "firebase:reglas": "node --env-file=.env.local scripts/desplegar-reglas.mjs"
     },
     "dependencies": {
         "@tailwindcss/postcss": "^4.3.5",
@@ -36,5 +39,8 @@
         "tailwindcss": "4.3.3",
         "typescript": "^5",
         "vitest": "^5.1.0"
+    },
+    "overrides": {
+        "jose": "5.10.0"
     }
 }
