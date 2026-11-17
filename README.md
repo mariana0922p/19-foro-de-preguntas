@@ -35,7 +35,7 @@ estudiante. Construida con **Next.js 16 (App Router)**, **React 19**,
   **Firestore** habilitados.
 - Una cuenta de servicio de Firebase (para el Admin SDK).
 
-## Puesta en marcha
+## Instalación y configuración
 
 1. Instala dependencias:
 
