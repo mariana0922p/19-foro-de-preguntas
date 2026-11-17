@@ -1,21 +1,17 @@
-﻿import { initializeApp, getApps, cert } from "firebase-admin/app";
+﻿import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-// Verificamos si ya existe una app iniciada para evitar duplicados
 const apps = getApps();
-
-let adminApp;
+let adminApp: App | undefined;
 
 if (!apps.length) {
-  // Verificamos que las variables existan antes de inicializar
   if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
     adminApp = initializeApp({
       credential: cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Reemplazamos los saltos de línea por si acaso vienen escapados en Vercel
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
       }),
     });
   }
@@ -23,5 +19,23 @@ if (!apps.length) {
   adminApp = apps[0];
 }
 
-export const adminAuth = adminApp ? getAuth(adminApp) : null;
-export const adminDb = adminApp ? getFirestore(adminApp) : null;
+export function tieneCredencialesFirebaseAdmin(): boolean {
+  return !!(
+    process.env.FIREBASE_PROJECT_ID &&
+    process.env.FIREBASE_CLIENT_EMAIL &&
+    process.env.FIREBASE_PRIVATE_KEY
+  );
+}
+
+export function obtenerAuthAdmin() {
+  if (!adminApp) return null;
+  return getAuth(adminApp);
+}
+
+export function obtenerFirestoreAdmin() {
+  if (!adminApp) return null;
+  return getFirestore(adminApp);
+}
+
+export const adminAuth = obtenerAuthAdmin();
+export const adminDb = obtenerFirestoreAdmin();
