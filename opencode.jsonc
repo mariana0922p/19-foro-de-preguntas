@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Límite técnico del contexto: la IA no puede leer ni editar nada fuera
+  // de la carpeta del proyecto (Location) ni de su worktree.
+  "permissions": [
+    { "action": "external_directory", "resource": "*", "effect": "deny" },
+
+    // Archivos de secretos: se bloquean siempre, incluidas las variantes.
+    { "action": "read", "resource": "*.env", "effect": "deny" },
+    { "action": "read", "resource": "*.env.*", "effect": "deny" },
+
+    // La única excepción es la plantilla pública, que sí puede leerse.
+    { "action": "read", "resource": "*.env.example", "effect": "allow" }
+  ]
+}

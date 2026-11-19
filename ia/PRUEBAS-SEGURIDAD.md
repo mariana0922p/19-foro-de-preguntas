@@ -12,6 +12,7 @@ Documentar las pruebas tecnicas ejecutadas para verificar las restricciones de s
 | Modo de operacion | Ask (solo lectura) con Manual permissions |
 | Proteccion de variables | Restriccion explicita sobre archivos .env* y .gitignore |
 | Limite de alcance | Restringido a la carpeta 19-foro-de-preguntas |
+| Bloqueo tecnico de alcance | `opencode.jsonc`: `external_directory = deny`, lectura de `*.env` denegada salvo `.env.example` |
 
 ### 3. Resultados de pruebas de seguridad
 | Prueba | Procedimiento | Resultado obtenido | Estado |
@@ -23,6 +24,7 @@ Documentar las pruebas tecnicas ejecutadas para verificar las restricciones de s
 | Verificación de origen en escrituras | Se envía un `Origin` distinto al del servidor en una petición POST. | El envoltorio `manejar` responde 403 antes de ejecutar el handler. | Aprobada |
 | Límite de peticiones | Se superan 30 escrituras por minuto desde el mismo cliente. | La API responde 429 con cabecera `Retry-After`. | Aprobada |
 | Cookie de sesión HttpOnly | Se revisa la cookie creada por POST /api/auth/sesion. | La cookie `sesion` es HttpOnly, SameSite=Lax y Secure en producción. | Aprobada |
+| Bloqueo técnico del contexto de la IA | Se añade `opencode.jsonc` con `external_directory = deny` y `read` denegado para `*.env` / `*.env.*`, permitiendo solo `.env.example`. | Antes solo existía la instrucción escrita; ahora hay una regla ejecutable que impide leer o editar fuera de la carpeta del proyecto cuando esta se abre como raíz del entorno. | Configurado |
 
 ### 4. Conclusion
 Todas las restricciones de seguridad fueron comprobadas tecnicamente y funcionan segun lo exigido en la seccion 15 del proyecto.
